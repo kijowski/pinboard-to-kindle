@@ -1,14 +1,13 @@
 const { writeFile } = require('fs');
-const { Builder } = require('selenium-webdriver');
 const crypto = require("crypto");
-const firefox = require('selenium-webdriver/firefox');
+const puppeteer = require('puppeteer');
 const Readability = require("readability");
 const JSDOM = require('jsdom').JSDOM;
 const URL = require('url').URL;
 const argv = require('minimist')(process.argv.slice(2));
 
 // Don't use Firefox for these domains. Will use JSDOM to fetch page source instead.
-const FIREFOX_DOMAIN_BLACKLIST = [
+const CHROME_DOMAIN_BLACKLIST = [
     'spiegel.de'
 ]
 
@@ -28,8 +27,8 @@ function url_in_blacklist(url, blacklist) {
     return false;
 }
 
-function use_firefox(url) {
-    return !url_in_blacklist(url, FIREFOX_DOMAIN_BLACKLIST);
+function use_chrome(url) {
+    return !url_in_blacklist(url, CHROME_DOMAIN_BLACKLIST);
 }
 
 function use_readability(url) {
@@ -48,21 +47,13 @@ function getHash(url) {
         .substring(0, 32);
 }
 
-async function fetch_page_source_firefox(url, callback) {
-    var options = new firefox.Options();
-    options.addArguments("-headless");
-    const driver = await new Builder()
-        .forBrowser('firefox')
-        .setFirefoxOptions(options)
-        .build();
-    try {
-        await driver.get(url);
-        await driver.sleep(5000);
-        const page_source = await driver.getPageSource();
-        return callback(page_source);
-    } finally {
-        await driver.quit();
-    }
+async function fetch_page_source_chrome(url, callback) {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto(url);
+  const content = await page.content()
+  await browser.close()
+  return content;
 }
 
 async function fetch_page_source_jsdom(url, callback) {
@@ -73,8 +64,8 @@ async function fetch_page_source_jsdom(url, callback) {
 
 async function make_readable(url, callback) {
     let fetch_page_source = fetch_page_source_jsdom;
-    if (use_firefox(url)) {
-        fetch_page_source = fetch_page_source_firefox;
+    if (use_chrome(url)) {
+        fetch_page_source = fetch_page_source_chrome;
     }
     fetch_page_source(url, page_source => {
         let res = [];

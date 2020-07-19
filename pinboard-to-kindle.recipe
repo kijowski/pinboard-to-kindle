@@ -22,7 +22,7 @@ KINDLE_TO_TAG = "kindle-to"
 KINDLE_SENT_TAG = "kindle-sent"
 
 ## Relative file path to fetch-article-moz-readability/index.js
-FETCH_ARTICLE_MOZ_READABILITY_RELATIVE_PATH = "fetch-article-moz-readability/index.js"
+FETCH_ARTICLE_MOZ_READABILITY_RELATIVE_PATH = "fetch-article-chrome-readability/index.js"
 
 ## Temporary folder to use for downloading bookmark's page content
 FETCH_ARTICLE_TMP_PATH = "/tmp"
