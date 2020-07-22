@@ -33,3 +33,4 @@ npm-debug.log
 # General
 tmp
 .vscode
+docker-compose.yml

@@ -1,0 +1,16 @@
+version: "3.7"
+services:
+  pinboard-to-kindle:
+    build: .
+    environment:
+      PINBOARD_TOKEN: "user:pass"
+      MAIL_SERVICE: "FastMail"
+      MAIL_HOST: "imap.fastmail.com"
+      MAIL_PORT: "993"
+      MAIL_SECURE: "true"
+      MAIL_USER: "username"
+      MAIL_PASS: "password"
+      FROM_MAIL: "from@example.com"
+      TO_MAIL: "kindle@example.com"
+      TO_SEND_TAG: "to-send"
+      SENT_TAG: "sent"
