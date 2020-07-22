@@ -14,21 +14,8 @@ __website__ = "https://github.com/christianhans/pinboard-to-kindle"
 ## Maximum number of unread Pinboard bookmarks to fetch
 MAX_ARTICLES = 50
 
-## If set, the recipe will only consider unread Pinboard bookmarks that have this tag
-KINDLE_TO_TAG = "kindle-to"
-
-## If set, the recipe will update all fetched Pinboard bookmarks and
-## replace KINDLE_TO_TAG with this tag
-KINDLE_SENT_TAG = "kindle-sent"
-
-## Relative file path to fetch-article-moz-readability/index.js
-FETCH_ARTICLE_MOZ_READABILITY_RELATIVE_PATH = "fetch-article-chrome-readability/index.js"
-
 ## Temporary folder to use for downloading bookmark's page content
 FETCH_ARTICLE_TMP_PATH = "/tmp"
-
-## Node binary to use
-NODE_BIN = "node"
 
 import os
 import sys
@@ -52,20 +39,33 @@ class PinboardRecipe(BasicNewsRecipe):
 
     downloaded_file_paths = {}
 
-    def _get_pinboard_token(self):
+    def _get_settings(self):
+        res = {}
         pinboard_token = os.environ.get("PINBOARD_TOKEN")
         if not pinboard_token:
             self.abort_recipe_processing(
                 "Please set PINBOARD_TOKEN environment variable."
             )
-        return pinboard_token
+        res["pinboard_token"] = pinboard_token
 
-    def _get_bookmarks(self):
+        to_send_tag = os.environ.get("TO_SEND_TAG")
+        if not to_send_tag:
+            self.abort_recipe_processing(
+                "Please set TO_SEND_TAG environment variable."
+            )
+        res["to_send_tag"] = to_send_tag
+
+        sent_tag = os.environ.get("SENT_TAG")
+        res["sent_tag"] = sent_tag if sent_tag else ""
+
+        return res
+
+    def _get_bookmarks(self, token, to_send_tag):
         params = urllib.urlencode(
             {
-                "tag": KINDLE_TO_TAG if KINDLE_TO_TAG else "",
+                "tag": to_send_tag if to_send_tag else "",
                 "format": "json",
-                "auth_token": self._get_pinboard_token(),
+                "auth_token": token,
             }
         )
         response = urllib.urlopen("https://api.pinboard.in/v1/posts/all?" + params)
@@ -76,15 +76,16 @@ class PinboardRecipe(BasicNewsRecipe):
             self.abort_recipe_processing("No unread Pinboard bookmarks.")
         return bookmarks
 
-    def _mark_bookmark_as_sent(self, bookmark):
-        if (not KINDLE_TO_TAG) or (not KINDLE_SENT_TAG):
+    def _mark_bookmark_as_sent(self, bookmark, token, to_send_tag, sent_tag):
+
+        if (not to_send_tag) or (not sent_tag):
             return
         print("Updating Pinboard tags: {}".format(bookmark["href"]))
         tags = bookmark["tags"].split()
-        if KINDLE_TO_TAG in tags:
-            tags.remove(KINDLE_TO_TAG)
-        if not KINDLE_SENT_TAG in tags:
-            tags.append(KINDLE_SENT_TAG)
+        if to_send_tag in tags:
+            tags.remove(to_send_tag)
+        if not sent_tag in tags:
+            tags.append(sent_tag)
         params = urllib.urlencode(
             {
                 "url": bookmark["href"],
@@ -96,7 +97,7 @@ class PinboardRecipe(BasicNewsRecipe):
                 "toread": bookmark["toread"],
                 "replace": "yes",
                 "format": "json",
-                "auth_token": self._get_pinboard_token(),
+                "auth_token": token,
             }
         )
         urllib.urlopen("https://api.pinboard.in/v1/posts/add?" + params)
@@ -111,27 +112,14 @@ class PinboardRecipe(BasicNewsRecipe):
 
         subprocess.call(
             [
-                NODE_BIN,
-                self._get_fetch_article_moz_readability_script_path(),
+                "p2k",
+                "download",
                 url,
-                "--output_file={}".format(downloaded_file_path),
+                downloaded_file_path 
             ]
         )
 
         return downloaded_file_path
-
-    def _get_fetch_article_moz_readability_script_path(self):
-        if len(sys.argv) < 3 or not "ebook-convert" in sys.argv[0]:
-            self.abort_recipe_processing(
-                "Please invoke this Calibre recipe via: "
-                "ebook-convert /path/to/pinboard-to-kindle.recipe output_file [options]"
-            )
-        if not "PWD" in os.environ:
-            self.abort_recipe_processing("PWD environment variable not set.")
-        recipe_base_path = os.path.normpath(
-            os.path.join(os.environ["PWD"], os.path.dirname(sys.argv[1]))
-        )
-        return os.path.join(recipe_base_path, FETCH_ARTICLE_MOZ_READABILITY_RELATIVE_PATH)
 
     def _get_article_metadata(self, article_file_path):
         res = {}
@@ -158,7 +146,9 @@ class PinboardRecipe(BasicNewsRecipe):
     def parse_index(self):
         articles = []
 
-        bookmarks = self._get_bookmarks()
+        settings = self._get_settings()
+
+        bookmarks = self._get_bookmarks(settings["pinboard_token"], settings["to_send_tag"])
         for bookmark in bookmarks:
             url = bookmark["href"]
             try:
@@ -168,7 +158,7 @@ class PinboardRecipe(BasicNewsRecipe):
                 print("Error fetching URL: {}".format(url))
                 continue
 
-            self._mark_bookmark_as_sent(bookmark)
+            self._mark_bookmark_as_sent(bookmark, settings["pinboard_token"], settings["to_send_tag"], settings["sent_tag"])
 
             articles.append(
                 {
