@@ -11,9 +11,6 @@ __website__ = "https://github.com/christianhans/pinboard-to-kindle"
 #
 # Config
 #
-## Maximum number of unread Pinboard bookmarks to fetch
-MAX_ARTICLES = 50
-
 ## Temporary folder to use for downloading bookmark's page content
 FETCH_ARTICLE_TMP_PATH = "/tmp"
 
@@ -58,9 +55,12 @@ class PinboardRecipe(BasicNewsRecipe):
         sent_tag = os.environ.get("SENT_TAG")
         res["sent_tag"] = sent_tag if sent_tag else ""
 
+        max_articles = os.environ.get("MAX_ARTICLES")
+        res["max_articles"] = max_articles if max_articles else 50
+
         return res
 
-    def _get_bookmarks(self, token, to_send_tag):
+    def _get_bookmarks(self, token, to_send_tag, max_articles):
         params = urllib.urlencode(
             {
                 "tag": to_send_tag if to_send_tag else "",
@@ -71,7 +71,7 @@ class PinboardRecipe(BasicNewsRecipe):
         response = urllib.urlopen("https://api.pinboard.in/v1/posts/all?" + params)
         bookmarks = json.loads(response.read().decode('utf-8-sig'))
         bookmarks = [b for b in bookmarks if (b["toread"] == "yes")]
-        bookmarks = bookmarks[:MAX_ARTICLES]
+        bookmarks = bookmarks[:max_articles]
         if len(bookmarks) == 0:
             self.abort_recipe_processing("No unread Pinboard bookmarks.")
         return bookmarks
@@ -148,7 +148,7 @@ class PinboardRecipe(BasicNewsRecipe):
 
         settings = self._get_settings()
 
-        bookmarks = self._get_bookmarks(settings["pinboard_token"], settings["to_send_tag"])
+        bookmarks = self._get_bookmarks(settings["pinboard_token"], settings["to_send_tag"], settings["max_articles"])
         for bookmark in bookmarks:
             url = bookmark["href"]
             try:
