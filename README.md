@@ -16,83 +16,115 @@
 
 ## Table of Contents
 
-* [Overview](#overview)
-* [Getting Started](#getting-started)
-  * [Prerequisites](#prerequisites)
-  * [Installation](#installation)
-* [Usage](#usage)
-* [License](#license)
+- [Overview](#overview)
+- [Running with Docker Compose](#running-with-docker-compose)
+  - [Install Docker Compose](#install-docker-compose)
+  - [Clone the repository](#clone-the-repository)
+  - [Set up docker-compose](#set-up-docker-compose)
+    - [Pinboard token](#pinboard-token)
+    - [Set up email service](#set-up-email-service)
+      - [Well known service](#well-known-service)
+      - [Other service](#other-service)
+      - [Kindle related configuration](#kindle-related-configuration)
+    - [Start the service](#start-the-service)
+  - [Interacting with running docker compose](#interacting-with-running-docker-compose)
+  - [License](#license)
 
 ## Overview
 
-  * Leverages a headless Firefox instance and Mozilla's [readability](https://github.com/mozilla/readability) library to fetch clutter- and ad-free article pages.
-    + This results in eBooks with articles that look similar to Firefox's Reader View.
-    + Pages with dynamic content (e.g. a page that loads images or text via JavaScript) can be fetched correctly.
-    + Most images embedded in articles are fetched as well and will be part of the generated eBook.
-  * Fetches only unread Pinboard bookmarks that have the tag `kindle-to` (per default up to 50 bookmarks).
-  * When a Pinboard bookmark was successfully fetched, the tag `kindle-to` is replaced with the `kindle-sent` tag.
-  * The tags `kindle-to`, `kindle-sent` and number of maximum bookmarks to fetch can be configured in `pinboard-to-kindle.recipe`.
+- Leverages a headless Firefox instance and Mozilla's [readability](https://github.com/mozilla/readability) library to fetch clutter- and ad-free article pages.
+  - This results in eBooks with articles that look similar to Firefox's Reader View.
+  - Pages with dynamic content (e.g. a page that loads images or text via JavaScript) can be fetched correctly.
+  - Most images embedded in articles are fetched as well and will be part of the generated eBook.
+- Fetches only unread Pinboard bookmarks that have the tag `kindle-to` (per default up to 50 bookmarks).
+- When a Pinboard bookmark was successfully fetched, the tag `kindle-to` is replaced with the `kindle-sent` tag.
+- App is fully dockerized and easy to set up and configure.
 
-## Getting Started
+## Running with Docker Compose
 
-### Prerequisites
+Easiest way to run pinboard-to-kindle is with [Docker Compose](https://docs.docker.com/compose/).
 
-| Prerequisite | Version         | Comment                              |
-|--------------|-----------------|--------------------------------------|
-| Git          | Any             | Required for cloning this repository |
-| Node.js      | 10 or later     |                                      |
-| NPM          | 5 or later      |                                      |
-| Calibre      | 3.39.1 or later |                                      |
-| Firefox      | 68 or later     |                                      |
-| Geckodriver  | 0.26.0 or later |                                      |
+### Install Docker Compose
 
-#### Install Prerequisites on macOS
+You can install Compose by following [official install guide](https://docs.docker.com/compose/install/).
 
-On macOS you can use [Homebrew](https://brew.sh) to install all prerequisites:
+### Clone the repository
 
-```sh
-brew install git node geckodriver
-brew cask install calibre firefox
-```
-
-#### Install Prerequisites on Debian/Ubuntu
-
-On Debian and Ubuntu you can run this command to install all prerequisites except Geckodriver:
-
-```sh
-sudo apt-get install git nodejs npm calibre firefox-esr
-```
-
-Prebuilt Geckodriver binaries for x86 and x64 architectures can be downloaded [here](https://github.com/mozilla/geckodriver/releases). Copy `geckodriver` for example to `/user/local/bin`, such that the `geckodriver` binary is in your `PATH`.
-
-### Installation
-  
 Clone this repository and `cd` into the cloned `pinboard-to-kindle` directory:
 
 ```sh
-git clone https://github.com/christianhans/pinboard-to-kindle.git
+git clone https://github.com/kijowski/pinboard-to-kindle.git
 cd pinboard-to-kindle
 ```
 
-Set your Pinboard API token. Copy your token from [this page](https://pinboard.in/settings/password) and replace `username:A3F...HG78` below with your actual token:
+### Set up docker-compose
 
-```sh
-echo 'PINBOARD_TOKEN="username:A3F...HG78"' >> config.env
+Copy `docker-compose.sample.yml` to `docker-compose.yml` and modify environment variable inside
+
+#### Pinboard token
+
+Set your Pinboard API token as PINBOARD_TOKEN environment variable in `docker-compose.yml`. Copy your token from [this page](https://pinboard.in/settings/password) and replace `username:A3F...HG78` below with your actual token:
+
+```
+  PINBOARD_TOKEN: "username:A3F...HG78"
 ```
 
-## Usage
+#### Set up email service
 
-In order to generate an eBook optimized for Kindle Paperwhite run:
+There are two ways of setting up mail:
 
-```sh
-eval $(egrep -v "^#" config.env | xargs) ebook-convert pinboard-to-kindle.recipe pinboard.mobi --output-profile kindle_pw3
+##### Well known service
+
+If your email provider is listed [at nodemailer website](https://nodemailer.com/smtp/well-known/) as a known service you can set MAIL_SERVICE, MAIL_USER, MAIL_PASS and FROM_MAIL environment variables eg:
+
+```
+  MAIL_SERVICE: "Gmail"
+  MAIL_USER: "example@gmail.com"
+  MAIL_PASS: "password"
+  FROM_MAIL: "example@gmail.com"
 ```
 
-To generate an eBook in ePub format run:
+You can safely remove MAIL_HOST, MAIL_PORT and MAIL_SECURE variables
 
-```sh
-eval $(egrep -v "^#" config.env | xargs) ebook-convert pinboard-to-kindle.recipe pinboard.epub
+##### Other service
+
+If your email provider is not listed as known service you can set it up manually by providing MAIL_USER, MAIL_PASS, MAIL_HOST, MAIL_PORT and MAIL_SECURE variables
+
 ```
+  MAIL_USER: "user"
+  MAIL_PASS: "password"
+  MAIL_HOST: "smtp.yourmailserver.com"
+  MAIL_PORT: "587"
+  MAIL_SECURE: "false"
+  FROM_MAIL: "example@yourmailserver.com"
+```
+
+You can remove `MAIL_SERVICE`
+
+#### Kindle related configuration
+
+Last bit of configuration that you can change is setting kindle email address as TO_MAIL, two tags: TO_SEND_TAG and SENT_TAG that will be managed by pinboard and MAX_ARTICLES which tells how much articles can be bundled in one mobi file
+
+```
+  TO_MAIL: "yourkindlemail@kindle.com"
+  TO_SEND_TAG: "to-send"
+  SENT_TAG: "sent"
+  MAX_ARTICLES: 10
+```
+
+### Start the service
+
+After configuration you can start the service with `docker-compose up -d` which will start the service in the background.
+
+From this point on the service should be working and sending you an email every Friday at 8am (this will be pulled into configuration soon)
+
+## Interacting with running docker compose
+
+You can interact with running service by executing commands with `docker-compose exec`.
+
+For example to run the processing you can invoke `docker-compose exec pinboard-to-kindle p2k process`.
+
+Other commands that you can run are `p2k download <url> <destination>` and `p2k send <title> <file>` - you can learn more about them in [cli.ts](/src/cli.ts) file.
 
 ## License
 
