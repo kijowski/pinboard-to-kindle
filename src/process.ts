@@ -11,11 +11,49 @@ export async function processArticles() {
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
   const day = date.getDate().toString().padStart(2, "0");
+  const dateStr = `${year}-${month}-${day}`;
   const title = `Various ${year}-${month}-${day}`;
-  const file = `various-${year}-${month}-${day}.mobi`;
-  const command = `ebook-convert pinboard-to-kindle.recipe ${file} --title "${title}" --output-profile kindle_pw3`;
-  console.log(`Executing: ${command}`);
-  cp.execSync(command, { encoding: "utf-8" });
+  const file = path.join(process.cwd(), `${dateStr}.mobi`);
+
+  log("Running p2k calibre recipe for %s", dateStr);
+
+  await new Promise((resolve, reject) => {
+    const subprocess = cp.spawn(
+      "ebook-convert",
+      [
+        "pinboard-to-kindle.recipe",
+        file,
+        "--title",
+        title,
+        "--output-profile",
+        "kindle_oasis",
+      ]
+      // { stdio: "inherit" }
+    );
+
+    subprocess.stdout.on("data", (chunk) => {
+      recipeLog(chunk.toString());
+    });
+
+    subprocess.stderr.on("data", (chunk) => {
+      recipeLog(chunk.toString());
+    });
+
+    subprocess.on("error", (err) => {
+      return reject(err);
+    });
+
+    subprocess.on("close", (code) => {
+      if (code !== 0) {
+        return reject(new Error("ebook-convert returned non-zero code"));
+      }
+      return resolve();
+    });
+  });
+
+  log("Generated mobi: %s", file);
+  log("Sending generated mobi via email");
+
   await sendEpub(title, file);
 
   log("Processing finished");
