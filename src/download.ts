@@ -2,13 +2,13 @@ import { JSDOM } from "jsdom";
 import Readability from "readability";
 import { Builder } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox";
-import { useChrome, useReadability } from "./blacklist";
+import { useFirefox, useReadability } from "./blacklist";
 
 function countWords(str: string) {
   return str.trim().split(/\s+/).length;
 }
 
-async function chromePageSource(url: string) {
+async function firefoxPageSource(url: string) {
   var options = new firefox.Options();
   options.addArguments("-headless");
   const driver = await new Builder()
@@ -35,8 +35,8 @@ export async function parseArticle(url: string) {
   let getPageSource = jsomPageSource;
   console.log("URL");
   console.log(url);
-  if (useChrome(url)) {
-    getPageSource = chromePageSource;
+  if (useFirefox(url)) {
+    log("Using firefox driver");
   }
   const pageSource = await getPageSource(url);
   let res = [];

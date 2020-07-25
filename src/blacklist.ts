@@ -17,7 +17,7 @@ function isInBlacklist(url: string, blacklist: string[]) {
   return false;
 }
 
-export function useChrome(url: string) {
+export function useFirefox(url: string) {
   return !isInBlacklist(url, CHROME_DOMAIN_BLACKLIST);
 }
 
