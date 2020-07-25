@@ -1,6 +1,7 @@
 import * as cp from "child_process";
 import * as path from "path";
 import { sendEpub } from "./mail";
+import { config } from "./config";
 import debug from "debug";
 
 const log = debug("p2k:processing");
@@ -12,7 +13,7 @@ export async function processArticles() {
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
   const day = date.getDate().toString().padStart(2, "0");
   const dateStr = `${year}-${month}-${day}`;
-  const title = `Various ${year}-${month}-${day}`;
+  const title = `${config.title} ${year}-${month}-${day}`;
   const file = path.join(process.cwd(), `${dateStr}.mobi`);
 
   log("Running p2k calibre recipe for %s", dateStr);
@@ -32,11 +33,17 @@ export async function processArticles() {
     );
 
     subprocess.stdout.on("data", (chunk) => {
-      recipeLog(chunk.toString());
+      const line = chunk.toString();
+      if (line != "") {
+        recipeLog(line);
+      }
     });
 
     subprocess.stderr.on("data", (chunk) => {
-      recipeLog(chunk.toString());
+      const line = chunk.toString();
+      if (line != "") {
+        recipeLog(line);
+      }
     });
 
     subprocess.on("error", (err) => {

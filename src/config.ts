@@ -15,6 +15,7 @@ interface Config {
   kindleToSendTag: string;
   kindleSentTag: string;
   pinboardToken: string;
+  title: string;
 }
 
 const service = process.env.MAIL_SERVICE ?? "";
@@ -35,6 +36,7 @@ const kindleMail = process.env.TO_MAIL ?? "";
 const pinboardToken = process.env.PINBOARD_TOKEN ?? "";
 const kindleToSendTag = process.env.TO_SEND_TAG ?? "";
 const kindleSentTag = process.env.SENT_TAG ?? "";
+const title = process.env.TITLE ?? "Weekly digest";
 
 export const config: Config = {
   mail,
@@ -42,4 +44,5 @@ export const config: Config = {
   kindleSentTag,
   kindleToSendTag,
   pinboardToken,
+  title,
 };

@@ -16,3 +16,4 @@ services:
       SENT_TAG: "sent"
       MAX_ARTICLES: 50
       DEBUG: "p2k:*"
+      TITLE: "Weekly Digest"
