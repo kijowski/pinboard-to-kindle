@@ -3,6 +3,9 @@ import Readability from "readability";
 import { Builder } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox";
 import { useFirefox, useReadability } from "./blacklist";
+import debug from "debug";
+
+const log = debug("p2k:download");
 
 function countWords(str: string) {
   return str.trim().split(/\s+/).length;
@@ -32,21 +35,24 @@ async function jsomPageSource(url: string) {
 }
 
 export async function parseArticle(url: string) {
+  log("Downloading %s", url);
   let getPageSource = jsomPageSource;
-  console.log("URL");
-  console.log(url);
   if (useFirefox(url)) {
     log("Using firefox driver");
+    getPageSource = firefoxPageSource;
+  } else {
+    log("Using JSDOM driver");
   }
   const pageSource = await getPageSource(url);
   let res = [];
 
-  // Parse article
+  log("Parsing DOM");
   const dom = new JSDOM(pageSource, { url });
   let reader = new Readability(dom.window.document, {});
   let article = reader.parse();
   let articleHtml = pageSource;
   if (useReadability(url)) {
+    log("Using readability library");
     articleHtml = article.content;
   }
 

@@ -1,5 +1,10 @@
 import * as cp from "child_process";
+import * as path from "path";
 import { sendEpub } from "./mail";
+import debug from "debug";
+
+const log = debug("p2k:processing");
+const recipeLog = debug("p2k:recipe");
 
 export async function processArticles() {
   const date = new Date();
@@ -12,4 +17,6 @@ export async function processArticles() {
   console.log(`Executing: ${command}`);
   cp.execSync(command, { encoding: "utf-8" });
   await sendEpub(title, file);
+
+  log("Processing finished");
 }

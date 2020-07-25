@@ -15,3 +15,4 @@ services:
       TO_SEND_TAG: "to-send"
       SENT_TAG: "sent"
       MAX_ARTICLES: 50
+      DEBUG: "p2k:*"
