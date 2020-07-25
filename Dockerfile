@@ -1,10 +1,14 @@
 FROM node:12-slim
 
 RUN apt-get update && apt-get install -y \
-    calibre \
     firefox-esr \
     git \
-    wget
+    wget \
+    xdg-utils \
+    xz-utils \
+    python
+
+RUN wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sh /dev/stdin
 
 RUN wget https://github.com/mozilla/geckodriver/releases/download/v0.26.0/geckodriver-v0.26.0-linux64.tar.gz
 RUN tar -xvzf geckodriver*
