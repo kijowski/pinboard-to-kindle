@@ -11,7 +11,7 @@ services:
       MAIL_USER: "username"
       MAIL_PASS: "password"
       FROM_MAIL: "from@example.com"
-      TO_MAIL: "kindle@example.com"
+      TO_MAIL: "kindle@example.com second-kindle@example.com"
       TO_SEND_TAG: "to-send"
       SENT_TAG: "sent"
       MAX_ARTICLES: 50

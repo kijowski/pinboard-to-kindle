@@ -9,9 +9,9 @@ export async function sendEpub(subject: string, epub: string) {
 
   const info = await transporter.sendMail({
     from: config.mail.address,
-    to: config.kindleMail,
+    to: config.kindleMail.split(" "),
     subject,
-    text: "",
+    text: subject,
     attachments: [{ path: epub }],
   });
 

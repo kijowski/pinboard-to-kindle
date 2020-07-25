@@ -106,11 +106,13 @@ You can remove `MAIL_SERVICE`
 Last bit of configuration that you can change is setting kindle email address as TO_MAIL, two tags: TO_SEND_TAG and SENT_TAG that will be managed by pinboard and MAX_ARTICLES which tells how much articles can be bundled in one mobi file
 
 ```
-  TO_MAIL: "yourkindlemail@kindle.com"
+  TO_MAIL: "yourkindlemail@kindle.com someothermail@example.com"
   TO_SEND_TAG: "to-send"
   SENT_TAG: "sent"
   MAX_ARTICLES: 10
 ```
+
+Note that you can use multiple addresses in TO_MAIL by separating them with a whitespace.
 
 ### Start the service
 
