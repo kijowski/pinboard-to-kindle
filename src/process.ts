@@ -3,17 +3,14 @@ import * as path from "path";
 import { sendEpub } from "./mail";
 import { config } from "./config";
 import debug from "debug";
+import { getDateString } from "./utils";
 
 const log = debug("p2k:processing");
 const recipeLog = debug("p2k:recipe");
 
 export async function processArticles() {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
-  const dateStr = `${year}-${month}-${day}`;
-  const title = `${config.title} ${year}-${month}-${day}`;
+  const dateStr = getDateString();
+  const title = `${config.title} ${dateStr}`;
   const file = path.join(process.cwd(), `${dateStr}.mobi`);
 
   log("Running p2k calibre recipe for %s", dateStr);
