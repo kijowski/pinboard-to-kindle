@@ -4,6 +4,8 @@ import { Builder } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox";
 import { useFirefox, useReadability } from "./blacklist";
 import debug from "debug";
+import * as fs from "fs";
+import { PinboardBookmark } from "./pinboard";
 
 const log = debug("p2k:download");
 
@@ -95,4 +97,37 @@ export async function parseArticle(url: string) {
   res.push("<p><i>" + links.join(" • ") + "</i></p>");
 
   return { title, subtitle, length, siteName, content: res.join("\n") };
+}
+
+export async function downloadArticles(
+  allBookmarks: { tag: string; bookmarks: PinboardBookmark[] }[],
+  rawDataFolder: string
+) {
+  if (!fs.existsSync(rawDataFolder)) {
+    fs.mkdirSync(rawDataFolder);
+  }
+  for (const { tag, bookmarks } of allBookmarks) {
+    for (const bookmark of bookmarks) {
+      const parsed = await parseArticle(bookmark.href);
+      const localFile = `${rawDataFolder}/${bookmark.hash}.html`;
+
+      fs.writeFileSync(localFile, parsed.content);
+
+      const metadata = {
+        title: parsed.title,
+        url: bookmark.href,
+        description: [
+          bookmark.description || parsed.subtitle,
+          parsed.length,
+        ].join(" • "),
+        tag,
+        localFile,
+      };
+
+      fs.writeFileSync(
+        `${rawDataFolder}/${bookmark.hash}.json`,
+        JSON.stringify(metadata)
+      );
+    }
+  }
 }

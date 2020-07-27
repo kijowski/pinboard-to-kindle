@@ -8,11 +8,6 @@ __license__ = "MIT"
 __copyright__ = "2020, Christian Hans"
 __website__ = "https://github.com/christianhans/pinboard-to-kindle"
 
-#
-# Config
-#
-## Temporary folder to use for downloading bookmark's page content
-FETCH_ARTICLE_TMP_PATH = "/tmp"
 
 import os
 import sys
@@ -21,11 +16,14 @@ import urllib
 import json
 import subprocess
 import uuid
+import glob
+from datetime import date
 
 
 class PinboardRecipe(BasicNewsRecipe):
     title = "Pinboard"
     description = "Generate an ebook of unread Pinboard bookmarks."
+    cover_url = "https://picsum.photos/600/800"
     __author__ = "Christian Hans"
 
     auto_cleanup = False
@@ -36,144 +34,34 @@ class PinboardRecipe(BasicNewsRecipe):
 
     downloaded_file_paths = {}
 
-    def _get_settings(self):
-        res = {}
-        pinboard_token = os.environ.get("PINBOARD_TOKEN")
-        if not pinboard_token:
-            self.abort_recipe_processing(
-                "Please set PINBOARD_TOKEN environment variable."
-            )
-        res["pinboard_token"] = pinboard_token
+    def _get_input_folder(self):
+        today = date.today().strftime("%Y-%m-%d")
 
-        to_send_tag = os.environ.get("TO_SEND_TAG")
-        if not to_send_tag:
-            self.abort_recipe_processing(
-                "Please set TO_SEND_TAG environment variable."
-            )
-        res["to_send_tag"] = to_send_tag
-
-        sent_tag = os.environ.get("SENT_TAG")
-        res["sent_tag"] = sent_tag if sent_tag else ""
-
-        max_articles = os.environ.get("MAX_ARTICLES")
-        res["max_articles"] = max_articles if max_articles else 50
-
-        return res
-
-    def _get_bookmarks(self, token, to_send_tag, max_articles):
-        params = urllib.urlencode(
-            {
-                "tag": to_send_tag if to_send_tag else "",
-                "format": "json",
-                "auth_token": token,
-            }
-        )
-        response = urllib.urlopen("https://api.pinboard.in/v1/posts/all?" + params)
-        bookmarks = json.loads(response.read().decode('utf-8-sig'))
-        bookmarks = [b for b in bookmarks if (b["toread"] == "yes")]
-        bookmarks = bookmarks[:max_articles]
-        if len(bookmarks) == 0:
-            self.abort_recipe_processing("No unread Pinboard bookmarks.")
-        return bookmarks
-
-    def _mark_bookmark_as_sent(self, bookmark, token, to_send_tag, sent_tag):
-
-        if (not to_send_tag) or (not sent_tag):
-            return
-        print("Updating Pinboard tags: {}".format(bookmark["href"]))
-        tags = bookmark["tags"].split()
-        if to_send_tag in tags:
-            tags.remove(to_send_tag)
-        if not sent_tag in tags:
-            tags.append(sent_tag)
-        params = urllib.urlencode(
-            {
-                "url": bookmark["href"],
-                "description": bookmark["description"],
-                "extended": bookmark["extended"],
-                "tags": " ".join(tags),
-                "dt": bookmark["time"],
-                "shared": bookmark["shared"],
-                "toread": bookmark["toread"],
-                "replace": "yes",
-                "format": "json",
-                "auth_token": token,
-            }
-        )
-        urllib.urlopen("https://api.pinboard.in/v1/posts/add?" + params)
-
-    def _fetch_article_moz_readability(self, url):
-        downloaded_file_path = os.path.join(
-            FETCH_ARTICLE_TMP_PATH, "{}.html".format(uuid.uuid1())
-        )
-        self.downloaded_file_paths[url] = downloaded_file_path
-
-        print("Downloading: {}".format(url))
-
-        subprocess.call(
-            [
-                "p2k",
-                "download",
-                url,
-                downloaded_file_path 
-            ]
-        )
-
-        return downloaded_file_path
-
-    def _get_article_metadata(self, article_file_path):
-        res = {}
-        with open(article_file_path, "r") as f:
-            html = f.read()
-        match = re.search(
-            '<[^>]+ id="pb-to-kindle-article-title">(.*?)</[^>]+>', html, re.IGNORECASE
-        )
-        if match:
-            res["title"] = match.group(1)
-        match = re.search(
-            '<[^>]+ id="pb-to-kindle-article-metadata">(.*?)</[^>]+>',
-            html,
-            re.IGNORECASE,
-        )
-        if match:
-            res["metadata"] = match.group(1)
-        return res
+        tmp_data_folder_env = os.environ.get("RAW_DATA_FOLDER")
+        tmp_data_folder = tmp_data_folder_env if tmp_data_folder_env else "/tmp/"
+        return os.path.join(tmp_data_folder, today)
 
     def get_obfuscated_article(self, url):
         """ Let Calibre download images and other media in downloaded html files """
         return self.downloaded_file_paths.get(url)
 
     def parse_index(self):
-        articles = []
+        articles = {}
 
-        settings = self._get_settings()
+        input_folder = self._get_input_folder()
 
-        bookmarks = self._get_bookmarks(settings["pinboard_token"], settings["to_send_tag"], settings["max_articles"])
-        for bookmark in bookmarks:
-            url = bookmark["href"]
-            try:
-                article_file_path = self._fetch_article_moz_readability(url)
-                article_info = self._get_article_metadata(article_file_path)
-            except:
-                print("Error fetching URL: {}".format(url))
-                continue
+        for filename in glob.glob(input_folder + "/*.json"):
+            with open(filename, "r") as f:
+                data = json.load(f)
+            tag = data["tag"]
+            if tag not in articles:
+                articles[tag] = []
+            articles[tag].append({
+                "title": data["title"],
+                "url": data["url"],
+                "description": data["description"],
+                "tag": data["tag"]
+            })
+            self.downloaded_file_paths[data["url"]] = data["localFile"]
 
-            self._mark_bookmark_as_sent(bookmark, settings["pinboard_token"], settings["to_send_tag"], settings["sent_tag"])
-
-            articles.append(
-                {
-                    "title": article_info.get("title", ""),
-                    "url": url,
-                    "description": article_info.get("metadata", ""),
-                    # "date": "February 20th, 2020",
-                }
-            )
-
-        return [("Pinboard", articles)]
-
-    def cleanup(self):
-        for file_path in self.downloaded_file_paths.values():
-            if not os.path.exists(file_path):
-                continue
-            print("Removing temporary file: {}".format(file_path))
-            os.remove(file_path)
+        return [(tag,arts) for tag, arts in articles.items()]

@@ -4,6 +4,8 @@ import { sendEpub } from "./mail";
 import { config } from "./config";
 import debug from "debug";
 import { getDateString } from "./utils";
+import { downloadArticles } from "./download";
+import { getBookmarks, markAsSent } from "./pinboard";
 
 const log = debug("p2k:processing");
 const recipeLog = debug("p2k:recipe");
@@ -11,7 +13,15 @@ const recipeLog = debug("p2k:recipe");
 export async function processArticles() {
   const dateStr = getDateString();
   const title = `${config.title} ${dateStr}`;
+  const rawDataFolder = `/tmp/${dateStr}/`;
   const file = path.join(process.cwd(), `${dateStr}.mobi`);
+
+  log("Getting bookmarks");
+
+  const bookmarks = await getBookmarks();
+
+  log("Downloading files");
+  await downloadArticles(bookmarks, rawDataFolder);
 
   log("Running p2k calibre recipe for %s", dateStr);
 
@@ -30,14 +40,14 @@ export async function processArticles() {
     );
 
     subprocess.stdout.on("data", (chunk) => {
-      const line = chunk.toString();
+      const line = chunk.toString().trim();
       if (line != "") {
         recipeLog(line);
       }
     });
 
     subprocess.stderr.on("data", (chunk) => {
-      const line = chunk.toString();
+      const line = chunk.toString().trim();
       if (line != "") {
         recipeLog(line);
       }
@@ -56,6 +66,14 @@ export async function processArticles() {
   });
 
   log("Generated mobi: %s", file);
+
+  log("Marking bookmarks as sent");
+  bookmarks.forEach(({ bookmarks }) => {
+    bookmarks.forEach(async (bookmark) => {
+      await markAsSent(bookmark);
+    });
+  });
+
   log("Sending generated mobi via email");
 
   await sendEpub(title, file);
