@@ -36,7 +36,11 @@ async function jsomPageSource(url: string) {
   });
 }
 
-export async function parseArticle(url: string) {
+export async function parseArticle(
+  url: string,
+  apiKey: string,
+  serverUrl?: string
+) {
   log("Downloading %s", url);
   let getPageSource = jsomPageSource;
   if (useFirefox(url)) {
@@ -77,24 +81,21 @@ export async function parseArticle(url: string) {
 
   // Article links
   let links = [];
-  links.push(
-    '<a id="pb-to-kindle-article-link" href="' + url + '">Article link</a>'
-  );
-
+  links.push(`<a href="${url}">Article link</a>`);
+  if (serverUrl != null) {
+    let href = `${serverUrl}?api_key=${apiKey}&url=${encodeURIComponent(url)}`;
+    links.push(`<a href="${href}">Mark as read</a>`);
+  }
   // Output
   if (title != "") {
-    res.push('<h2 id="pb-to-kindle-article-title">' + article.title + "</h2>");
+    res.push(`<h2>${article.title}</h2>`);
   }
-  res.push(
-    '<p><i id="pb-to-kindle-article-metadata">' + meta.join(" • ") + "</i></p>"
-  );
-  res.push(
-    '<p><i id="pb-to-kindle-article-links">' + links.join(" • ") + "</i></p>"
-  );
+  res.push(`<p><i>${meta.join(" • ")}</i></p>`);
+  res.push(`<p><i>${links.join(" • ")}</i></p>`);
   res.push("<hr>");
   res.push(articleHtml);
   res.push("<hr>");
-  res.push("<p><i>" + links.join(" • ") + "</i></p>");
+  res.push(`<p><i>${links.join(" • ")}</i></p>`);
 
   return { title, subtitle, length, siteName, content: res.join("\n") };
 }
